@@ -49,11 +49,9 @@ void pickup_draw(const PickupDrop *p, const Assets *a) {
     if (!p->active) return;
 
     float scale = SPRITE_SCALE;
-    float glow = 18.0f + 4.0f * sinf(p->pulse * 7.0f);
-    DrawCircleV((Vector2){p->x, p->y}, glow, (Color){255, 220, 90, 70});
     DrawTextureEx(a->pollen,
         (Vector2){p->x - (SPR_SIZE_8 * scale) / 2.0f, p->y - (SPR_SIZE_8 * scale) / 2.0f},
-        p->pulse * 40.0f, scale, WHITE);
+        0.0f, scale, WHITE);
 }
 
 bool pickup_try_collect(PickupDrop *p, float px, float py) {

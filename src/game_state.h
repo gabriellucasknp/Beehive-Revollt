@@ -26,11 +26,21 @@ typedef struct {
     PickupDrop pickup;
     QuickQuiz  pickup_quiz;
     QuickQuiz  memory_quiz;
+    QuickQuiz  paper_quiz;
     HiveTrialState hive_trial;
+    PaperTrialState paper_trial;
     Assets     assets;
     char       status_text[64];
     float      status_timer;
     float      hive_hazard_timer;
+    float      archive_honey_timer;
+    float      archive_honey_warning;
+    float      archive_honey_active;
+    float      archive_paper_x;
+    float      archive_paper_y;
+    int        archive_honey_zones[ARCHIVE_HAZARD_MAX_ACTIVE];
+    int        archive_honey_zone_count;
+    bool       archive_paper_active;
     int        reveal_room_index;
 } Game;
 
