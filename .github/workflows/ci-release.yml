@@ -27,8 +27,8 @@ jobs:
       - name: Build and install raylib for tests
         run: |
           git clone --depth 1 https://github.com/raysan5/raylib.git /tmp/raylib
-          make -C /tmp/raylib/src PLATFORM=PLATFORM_DESKTOP
-          sudo make -C /tmp/raylib/src install PLATFORM=PLATFORM_DESKTOP
+          make -C /tmp/raylib/src PLATFORM=PLATFORM_DESKTOP RAYLIB_LIBTYPE=SHARED
+          sudo make -C /tmp/raylib/src install PLATFORM=PLATFORM_DESKTOP RAYLIB_LIBTYPE=SHARED
           sudo ldconfig
 
       - name: Run tests
@@ -53,8 +53,8 @@ jobs:
       - name: Build and install raylib
         run: |
           git clone --depth 1 https://github.com/raysan5/raylib.git /tmp/raylib
-          make -C /tmp/raylib/src PLATFORM=PLATFORM_DESKTOP
-          sudo make -C /tmp/raylib/src install PLATFORM=PLATFORM_DESKTOP
+          make -C /tmp/raylib/src PLATFORM=PLATFORM_DESKTOP RAYLIB_LIBTYPE=SHARED
+          sudo make -C /tmp/raylib/src install PLATFORM=PLATFORM_DESKTOP RAYLIB_LIBTYPE=SHARED
           sudo ldconfig
 
       - name: Build Linux binary
