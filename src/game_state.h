@@ -8,6 +8,8 @@
 #include "enemy.h"
 #include "stage.h"
 #include "quiz.h"
+#include "pickup.h"
+#include "quick_quiz.h"
 
 typedef struct {
     GameState state;
@@ -20,7 +22,11 @@ typedef struct {
     BulletPool bullets;
     EnemyGrid  grid;
     Quiz       quiz;
+    PickupDrop pickup;
+    QuickQuiz  pickup_quiz;
     Assets     assets;
+    char       status_text[64];
+    float      status_timer;
 } Game;
 
 void game_init(Game *g);

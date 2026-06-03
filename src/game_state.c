@@ -3,17 +3,27 @@
 #include "ui.h"
 #include "raylib.h"
 #include <math.h>
+#include <stdio.h>
 
 /* ------------------------------------------------------------------ */
 /* Internal helpers                                                     */
 /* ------------------------------------------------------------------ */
 
 static void begin_stage(Game *g, int n) {
+    int saved[POWER_COUNT];
+    for (int i = 0; i < POWER_COUNT; i++) saved[i] = g->player.powers[i];
+
     g->current_stage = n;
     player_init(&g->player);
+    for (int i = 0; i < POWER_COUNT; i++) g->player.powers[i] = saved[i];
     bullets_init(&g->bullets);
     stage_load(&g->grid, n);
+    pickup_init(&g->pickup);
+    g->pickup_quiz.active = false;
+    g->pickup_quiz.finished = false;
     g->bg_scroll = 0.0f;
+    g->status_text[0] = '\0';
+    g->status_timer = 0.0f;
     g->state     = STATE_PLAYING;
 }
 
@@ -26,6 +36,30 @@ static void draw_background(const Game *g) {
     float y     = fmodf(g->bg_scroll * scale, th);
     DrawTextureEx(bg, (Vector2){0,      y},      0.0f, scale, WHITE);
     DrawTextureEx(bg, (Vector2){0, y - th},      0.0f, scale, WHITE);
+}
+
+static void draw_playfield(const Game *g) {
+    draw_background(g);
+    bullets_draw(&g->bullets, &g->assets);
+    enemy_grid_draw(&g->grid, &g->assets);
+    pickup_draw(&g->pickup, &g->assets);
+    player_draw(&g->player, &g->assets);
+    ui_draw_hud(&g->player, g->score, g->current_stage, &g->assets);
+
+    if (g->status_timer > 0.0f && g->status_text[0]) {
+        DrawText(g->status_text,
+                 SCREEN_W / 2 - MeasureText(g->status_text, 18) / 2,
+                 48, 18, (Color){255, 255, 255, 255});
+    }
+}
+
+static TempBoostType random_temp_boost(void) {
+    return (TempBoostType)GetRandomValue(0, TEMP_BOOST_COUNT - 1);
+}
+
+static void set_status(Game *g, const char *text) {
+    snprintf(g->status_text, sizeof(g->status_text), "%s", text);
+    g->status_timer = 2.0f;
 }
 
 /* ------------------------------------------------------------------ */
@@ -52,25 +86,39 @@ static void frame_playing(Game *g, float dt) {
 
     if (g->state == STATE_PLAYING) {
         g->bg_scroll += 40.0f * dt;
+        if (g->status_timer > 0.0f) g->status_timer -= dt;
         player_update(&g->player, dt);
 
         if ((IsKeyPressed(KEY_W) || IsKeyPressed(KEY_UP)) &&
              g->player.shoot_timer <= 0.0f) {
-            bullet_spawn_player(&g->bullets, g->player.x, g->player.y);
+            if (g->player.temp_boost == TEMP_BOOST_DOUBLE_SHOT) {
+                bullet_spawn_player(&g->bullets, g->player.x - 10.0f, g->player.y);
+                bullet_spawn_player(&g->bullets, g->player.x + 10.0f, g->player.y);
+            } else {
+                bullet_spawn_player(&g->bullets, g->player.x, g->player.y);
+            }
             g->player.shoot_timer = player_shoot_cooldown(&g->player);
         }
 
         bullets_update(&g->bullets, dt);
         enemy_grid_update(&g->grid, &g->bullets, dt);
         g->score += collision_update(&g->player, &g->grid, &g->bullets);
+
+        if (g->player.lives <= 0) {
+            g->state = STATE_GAME_OVER;
+        } else {
+            pickup_update(&g->pickup, dt);
+
+            if (pickup_try_collect(&g->pickup, g->player.x, g->player.y)) {
+                quick_quiz_start(&g->pickup_quiz);
+                g->state = STATE_PICKUP_QUIZ;
+            }
+        }
     }
 
-    /* --- draw --- */
-    draw_background(g);
-    bullets_draw(&g->bullets, &g->assets);
-    enemy_grid_draw(&g->grid, &g->assets);
-    player_draw(&g->player, &g->assets);
-    ui_draw_hud(&g->player, g->score, g->current_stage, &g->assets);
+    draw_playfield(g);
+
+    if (g->state == STATE_PICKUP_QUIZ || g->state == STATE_GAME_OVER) return;
 
     if (g->state == STATE_PAUSED) {
         bool to_menu = ui_draw_pause();
@@ -103,6 +151,27 @@ static void frame_quiz(Game *g) {
     if (g->quiz.passed) g->state = STATE_POWER_CHOICE;
 }
 
+static void frame_pickup_quiz(Game *g, float dt) {
+    draw_playfield(g);
+    quick_quiz_update(&g->pickup_quiz, dt);
+    quick_quiz_draw(&g->pickup_quiz);
+
+    if (!g->pickup_quiz.finished) return;
+
+    if (g->pickup_quiz.passed) {
+        TempBoostType boost = random_temp_boost();
+        player_apply_temp_boost(&g->player, boost, 10.0f);
+        snprintf(g->status_text, sizeof(g->status_text), "BOOST: %s", player_temp_boost_name(boost));
+        g->status_timer = 2.0f;
+    } else if (g->pickup_quiz.timed_out) {
+        set_status(g, "Tempo esgotado. Nenhum boost.");
+    } else {
+        set_status(g, "Resposta errada. Nenhum boost.");
+    }
+
+    g->state = STATE_PLAYING;
+}
+
 static void frame_power_choice(Game *g) {
     int choice = ui_draw_power_choice();
     if (choice >= 0 && choice < POWER_COUNT) {
@@ -131,11 +200,18 @@ static void frame_victory(Game *g) {
 /* ------------------------------------------------------------------ */
 
 void game_init(Game *g) {
+    player_init(&g->player);
+    bullets_init(&g->bullets);
     g->state            = STATE_MENU;
     g->current_stage    = 1;
     g->score            = 0;
     g->narrative_screen = 0;
     g->bg_scroll        = 0.0f;
+    pickup_init(&g->pickup);
+    g->pickup_quiz.active = false;
+    g->pickup_quiz.finished = false;
+    g->status_text[0] = '\0';
+    g->status_timer = 0.0f;
 }
 
 void game_frame(Game *g, float dt) {
@@ -147,6 +223,7 @@ void game_frame(Game *g, float dt) {
         case STATE_PLAYING:
         case STATE_PAUSED:       frame_playing(g, dt);    break;
         case STATE_QUIZ:         frame_quiz(g);           break;
+        case STATE_PICKUP_QUIZ:  frame_pickup_quiz(g, dt);break;
         case STATE_POWER_CHOICE: frame_power_choice(g);   break;
         case STATE_GAME_OVER:    frame_game_over(g);      break;
         case STATE_VICTORY:      frame_victory(g);        break;

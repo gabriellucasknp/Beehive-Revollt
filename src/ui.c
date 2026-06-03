@@ -115,6 +115,16 @@ void ui_draw_hud(const Player *p, int score, int stage, const Assets *a) {
         snprintf(pb, sizeof(pb), "%s x%d", pnames[i], p->powers[i]);
         DrawText(pb, 8, 40 + i * 18, FONT_SIZE_SM, pcols[i]);
     }
+
+    if (p->temp_boost != TEMP_BOOST_NONE) {
+        char bb[48];
+        snprintf(bb, sizeof(bb), "BOOST %s %.1fs",
+                 player_temp_boost_name(p->temp_boost), p->temp_boost_timer);
+        DrawText(bb,
+                 CX - MeasureText(bb, FONT_SIZE_SM) / 2,
+                 SCREEN_H - 28,
+                 FONT_SIZE_SM, COL_GREEN);
+    }
 }
 
 /* ---- POWER CHOICE ---- */

@@ -14,7 +14,7 @@
 #define SPR_SIZE_8    8
 
 /* --- Object pool limits --- */
-#define MAX_PLAYER_BULLETS  16
+#define MAX_PLAYER_BULLETS  32
 #define MAX_ENEMY_BULLETS   32
 #define MAX_ENEMIES         30
 
@@ -31,6 +31,7 @@ typedef enum {
     STATE_PLAYING,
     STATE_PAUSED,
     STATE_QUIZ,
+    STATE_PICKUP_QUIZ,
     STATE_POWER_CHOICE,
     STATE_GAME_OVER,
     STATE_VICTORY
@@ -52,5 +53,14 @@ typedef enum {
     POWER_SPEED     = 2,
     POWER_COUNT     = 3
 } PowerType;
+
+typedef enum {
+    TEMP_BOOST_NONE = -1,
+    TEMP_BOOST_DOUBLE_SHOT = 0,
+    TEMP_BOOST_RAPID_SHOT  = 1,
+    TEMP_BOOST_SPEED       = 2,
+    TEMP_BOOST_SHIELD      = 3,
+    TEMP_BOOST_COUNT       = 4
+} TempBoostType;
 
 #endif /* TYPES_H */
