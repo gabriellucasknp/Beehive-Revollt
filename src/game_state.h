@@ -7,6 +7,7 @@
 #include "bullet.h"
 #include "enemy.h"
 #include "stage.h"
+#include "campaign.h"
 #include "quiz.h"
 #include "pickup.h"
 #include "quick_quiz.h"
@@ -24,9 +25,13 @@ typedef struct {
     Quiz       quiz;
     PickupDrop pickup;
     QuickQuiz  pickup_quiz;
+    QuickQuiz  memory_quiz;
+    HiveTrialState hive_trial;
     Assets     assets;
     char       status_text[64];
     float      status_timer;
+    float      hive_hazard_timer;
+    int        reveal_room_index;
 } Game;
 
 void game_init(Game *g);

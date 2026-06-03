@@ -1,11 +1,13 @@
 #include "enemy.h"
 #include "raylib.h"
+#include <math.h>
 #include <stdlib.h>
 
 #define EXPLOSION_DURATION 0.35f
 #define FORMATION_START_Y  60.0f
 #define FORMATION_PAD_X    (SPR_SIZE_16 * SPRITE_SCALE + 6.0f)
 #define FORMATION_PAD_Y    (SPR_SIZE_16 * SPRITE_SCALE + 6.0f)
+#define RUSH_SPEED         235.0f
 
 Texture2D enemy_texture(const Assets *a, EnemyType type) {
     switch (type) {
@@ -13,12 +15,13 @@ Texture2D enemy_texture(const Assets *a, EnemyType type) {
         case ENEMY_WASP:       return a->wasp_enemy;
         case ENEMY_STINGER:    return a->stinger_jet;
         case ENEMY_QUEEN_MINI: return a->queen_mini;
+        case ENEMY_BOSS:       return a->queen_boss;
         default:               return a->drone_enemy;
     }
 }
 
 void enemy_grid_init(EnemyGrid *g, EnemyType type, int cols, int rows,
-                     float speed_mult, float shoot_interval) {
+                     float speed_mult, float shoot_interval, bool rush_enabled) {
     g->count          = 0;
     g->dir            = 1.0f;
     g->move_timer     = 0.0f;
@@ -27,6 +30,8 @@ void enemy_grid_init(EnemyGrid *g, EnemyType type, int cols, int rows,
     g->shoot_interval = shoot_interval;
     g->step_dx        = 18.0f;
     g->step_dy        = SPR_SIZE_16 * SPRITE_SCALE * 0.5f;
+    g->rush_enabled   = rush_enabled;
+    g->rush_timer     = rush_enabled ? 1.2f : 0.0f;
 
     float total_w = cols * FORMATION_PAD_X - 6.0f;
     float start_x = (SCREEN_W - total_w) / 2.0f + SPR_SIZE_16 * SPRITE_SCALE / 2.0f;
@@ -37,9 +42,12 @@ void enemy_grid_init(EnemyGrid *g, EnemyType type, int cols, int rows,
             Enemy *e = &g->enemies[g->count++];
             e->x            = start_x + c * FORMATION_PAD_X;
             e->y            = FORMATION_START_Y + r * FORMATION_PAD_Y;
+            e->vx           = 0.0f;
+            e->vy           = 0.0f;
             e->type         = type;
             e->active       = true;
             e->hp           = 1;
+            e->motion       = ENEMY_FORMATION;
             e->explode_timer = 0.0f;
         }
     }
@@ -48,18 +56,51 @@ void enemy_grid_init(EnemyGrid *g, EnemyType type, int cols, int rows,
 static bool any_at_edge(const EnemyGrid *g) {
     float half = SPR_SIZE_16 * SPRITE_SCALE / 2.0f;
     for (int i = 0; i < g->count; i++) {
-        if (!g->enemies[i].active) continue;
+        if (!g->enemies[i].active || g->enemies[i].motion != ENEMY_FORMATION) continue;
         float nx = g->enemies[i].x + g->dir * g->step_dx;
         if (nx - half < 0 || nx + half > SCREEN_W) return true;
     }
     return false;
 }
 
-void enemy_grid_update(EnemyGrid *g, BulletPool *bp, float dt) {
+static void launch_rusher(EnemyGrid *g, const Player *player) {
+    int candidates[MAX_ENEMIES];
+    int n = 0;
+
+    for (int i = 0; i < g->count; i++) {
+        if (!g->enemies[i].active || g->enemies[i].motion != ENEMY_FORMATION) continue;
+        candidates[n++] = i;
+    }
+
+    if (n == 0) return;
+
+    Enemy *e = &g->enemies[candidates[GetRandomValue(0, n - 1)]];
+    float dx = player->x - e->x;
+    float dy = player->y - e->y;
+    float len = sqrtf(dx * dx + dy * dy);
+    if (len <= 0.01f) len = 1.0f;
+
+    e->motion = ENEMY_RUSHING;
+    e->vx = (dx / len) * RUSH_SPEED;
+    e->vy = (dy / len) * RUSH_SPEED;
+}
+
+void enemy_grid_update(EnemyGrid *g, BulletPool *bp, const Player *player, float dt) {
     /* explosion timers */
     for (int i = 0; i < g->count; i++) {
         if (g->enemies[i].explode_timer > 0.0f)
             g->enemies[i].explode_timer -= dt;
+    }
+
+    for (int i = 0; i < g->count; i++) {
+        Enemy *e = &g->enemies[i];
+        if (!e->active || e->motion != ENEMY_RUSHING) continue;
+        e->x += e->vx * dt;
+        e->y += e->vy * dt;
+        if (e->x < -40.0f || e->x > SCREEN_W + 40.0f ||
+            e->y < -40.0f || e->y > SCREEN_H + 40.0f) {
+            e->active = false;
+        }
     }
 
     /* lateral movement */
@@ -70,15 +111,23 @@ void enemy_grid_update(EnemyGrid *g, BulletPool *bp, float dt) {
         if (any_at_edge(g)) {
             /* drop down and reverse */
             for (int i = 0; i < g->count; i++) {
-                if (!g->enemies[i].active) continue;
+                if (!g->enemies[i].active || g->enemies[i].motion != ENEMY_FORMATION) continue;
                 g->enemies[i].y += g->step_dy;
             }
             g->dir = -g->dir;
         } else {
             for (int i = 0; i < g->count; i++) {
-                if (!g->enemies[i].active) continue;
+                if (!g->enemies[i].active || g->enemies[i].motion != ENEMY_FORMATION) continue;
                 g->enemies[i].x += g->dir * g->step_dx;
             }
+        }
+    }
+
+    if (g->rush_enabled) {
+        g->rush_timer -= dt;
+        if (g->rush_timer <= 0.0f) {
+            launch_rusher(g, player);
+            g->rush_timer = 1.35f;
         }
     }
 
@@ -90,7 +139,7 @@ void enemy_grid_update(EnemyGrid *g, BulletPool *bp, float dt) {
         /* pick a random active enemy */
         int alive[MAX_ENEMIES], n = 0;
         for (int i = 0; i < g->count; i++)
-            if (g->enemies[i].active) alive[n++] = i;
+            if (g->enemies[i].active && g->enemies[i].motion == ENEMY_FORMATION) alive[n++] = i;
 
         if (n > 0) {
             int idx = alive[GetRandomValue(0, n - 1)];

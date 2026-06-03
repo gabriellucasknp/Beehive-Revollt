@@ -61,18 +61,39 @@ static Rectangle option_rect(int idx) {
     return (Rectangle){70.0f, 180.0f + idx * 78.0f, SCREEN_W - 140.0f, 56.0f};
 }
 
+void quick_quiz_start_custom(QuickQuiz *q,
+                             const char *title,
+                             const char *subtitle,
+                             const char *prompt,
+                             const char *const options[QUICK_QUIZ_OPTION_COUNT],
+                             int correct_option,
+                             float time_limit) {
+    memset(q, 0, sizeof(*q));
+    strncpy(q->title, title, sizeof(q->title) - 1);
+    strncpy(q->subtitle, subtitle, sizeof(q->subtitle) - 1);
+    strncpy(q->prompt, prompt, sizeof(q->prompt) - 1);
+    for (int i = 0; i < QUICK_QUIZ_OPTION_COUNT; i++)
+        strncpy(q->options[i], options[i], sizeof(q->options[i]) - 1);
+    q->correct_option = correct_option;
+    q->selected_option = -1;
+    q->time_limit = time_limit > 0.0f ? time_limit : QUIZ_TIME_LIMIT;
+    q->time_left = q->time_limit;
+    q->active = true;
+}
+
 void quick_quiz_start(QuickQuiz *q) {
     int idx = GetRandomValue(0, (int)(sizeof(QUICK_QUIZ_DEFS) / sizeof(QUICK_QUIZ_DEFS[0])) - 1);
     const QuickQuizDef *def = &QUICK_QUIZ_DEFS[idx];
 
-    memset(q, 0, sizeof(*q));
-    strncpy(q->prompt, def->prompt, sizeof(q->prompt) - 1);
-    for (int i = 0; i < QUICK_QUIZ_OPTION_COUNT; i++)
-        strncpy(q->options[i], def->options[i], sizeof(q->options[i]) - 1);
-    q->correct_option = def->correct_option;
-    q->selected_option = -1;
-    q->time_left = QUIZ_TIME_LIMIT;
-    q->active = true;
+    quick_quiz_start_custom(
+        q,
+        "QUIZ RELAMPAGO",
+        "Responda em ate 15s para ganhar um boost",
+        def->prompt,
+        def->options,
+        def->correct_option,
+        QUIZ_TIME_LIMIT
+    );
 }
 
 void quick_quiz_update(QuickQuiz *q, float dt) {
@@ -111,11 +132,11 @@ void quick_quiz_draw(const QuickQuiz *q) {
     if (!q->active) return;
 
     DrawRectangle(0, 0, SCREEN_W, SCREEN_H, (Color){5, 5, 15, 235});
-    DrawText("QUIZ RELAMPAGO",
-             SCREEN_W / 2 - MeasureText("QUIZ RELAMPAGO", 28) / 2,
+    DrawText(q->title,
+             SCREEN_W / 2 - MeasureText(q->title, 28) / 2,
              36, 28, (Color){255, 220, 90, 255});
-    DrawText("Responda em ate 15s para ganhar um boost",
-             SCREEN_W / 2 - MeasureText("Responda em ate 15s para ganhar um boost", 16) / 2,
+    DrawText(q->subtitle,
+             SCREEN_W / 2 - MeasureText(q->subtitle, 16) / 2,
              74, 16, (Color){200, 200, 220, 255});
 
     DrawText(q->prompt, 70, 108, FONT_SIZE_PROMPT, WHITE);
@@ -134,7 +155,7 @@ void quick_quiz_draw(const QuickQuiz *q) {
 
     DrawRectangle(70, SCREEN_H - 64, SCREEN_W - 140, 18, (Color){45, 45, 60, 255});
     DrawRectangle(70, SCREEN_H - 64,
-                  (int)((SCREEN_W - 140) * (q->time_left / QUIZ_TIME_LIMIT)), 18,
+                  (int)((SCREEN_W - 140) * (q->time_left / q->time_limit)), 18,
                   (Color){255, 210, 50, 255});
     DrawRectangleLines(70, SCREEN_H - 64, SCREEN_W - 140, 18, WHITE);
 

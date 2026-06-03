@@ -19,6 +19,7 @@ typedef struct {
     Texture2D explosion_2;
     Texture2D heart;
     Texture2D hex_tile;
+    Texture2D memory_shard;
     /* scenes */
     Texture2D stages[8];     /* stages[1..7] */
     Texture2D cutscene[4];   /* cutscene[1..3] */
