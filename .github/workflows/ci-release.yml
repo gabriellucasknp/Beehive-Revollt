@@ -20,7 +20,16 @@ jobs:
       - name: Install test toolchain
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential pkg-config libraylib-dev
+          sudo apt-get install -y build-essential git pkg-config \
+            libx11-dev libxcursor-dev libxinerama-dev libxrandr-dev libxi-dev \
+            libasound2-dev mesa-common-dev libgl1-mesa-dev
+
+      - name: Build and install raylib for tests
+        run: |
+          git clone --depth 1 https://github.com/raysan5/raylib.git /tmp/raylib
+          make -C /tmp/raylib/src PLATFORM=PLATFORM_DESKTOP
+          sudo make -C /tmp/raylib/src install PLATFORM=PLATFORM_DESKTOP
+          sudo ldconfig
 
       - name: Run tests
         run: make clean test
@@ -37,7 +46,16 @@ jobs:
       - name: Install Linux build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential pkg-config libraylib-dev
+          sudo apt-get install -y build-essential git pkg-config \
+            libx11-dev libxcursor-dev libxinerama-dev libxrandr-dev libxi-dev \
+            libasound2-dev mesa-common-dev libgl1-mesa-dev
+
+      - name: Build and install raylib
+        run: |
+          git clone --depth 1 https://github.com/raysan5/raylib.git /tmp/raylib
+          make -C /tmp/raylib/src PLATFORM=PLATFORM_DESKTOP
+          sudo make -C /tmp/raylib/src install PLATFORM=PLATFORM_DESKTOP
+          sudo ldconfig
 
       - name: Build Linux binary
         run: make clean && make
