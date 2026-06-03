@@ -1,0 +1,132 @@
+name: CI Release
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Install test toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential pkg-config libraylib-dev
+
+      - name: Run tests
+        run: make clean test
+
+  build-linux:
+    name: Build Linux Release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Install Linux build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential pkg-config libraylib-dev
+
+      - name: Build Linux binary
+        run: make clean && make
+
+      - name: Package Linux release
+        run: |
+          mkdir -p dist/beehive-revolt-linux-x86_64
+          cp build/beehive_revolt dist/beehive-revolt-linux-x86_64/
+          cp -r assets dist/beehive-revolt-linux-x86_64/
+          tar -C dist -czf beehive-revolt-linux-x86_64.tar.gz beehive-revolt-linux-x86_64
+
+      - name: Upload Linux artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: beehive-revolt-linux-x86_64
+          path: beehive-revolt-linux-x86_64.tar.gz
+
+  build-windows:
+    name: Build Windows Release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: test
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Install MSYS2 toolchain
+        uses: msys2/setup-msys2@v2
+        with:
+          update: true
+          install: >-
+            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-make
+            mingw-w64-x86_64-pkgconf
+            mingw-w64-x86_64-raylib
+
+      - name: Build Windows binary
+        shell: msys2 {0}
+        run: make clean && make OS=Windows_NT TARGET_EXT=.exe RAYLIB_PREFIX=/mingw64
+
+      - name: Package Windows release
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path dist/beehive-revolt-windows-x86_64 | Out-Null
+          Copy-Item build/beehive_revolt.exe dist/beehive-revolt-windows-x86_64/
+          Copy-Item assets dist/beehive-revolt-windows-x86_64/assets -Recurse
+          Compress-Archive -Path dist/beehive-revolt-windows-x86_64 -DestinationPath beehive-revolt-windows-x86_64.zip -Force
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: beehive-revolt-windows-x86_64
+          path: beehive-revolt-windows-x86_64.zip
+
+  release:
+    name: Publish Release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs:
+      - build-linux
+      - build-windows
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download Linux artifact
+        uses: actions/download-artifact@v5
+        with:
+          name: beehive-revolt-linux-x86_64
+          path: dist/linux
+
+      - name: Download Windows artifact
+        uses: actions/download-artifact@v5
+        with:
+          name: beehive-revolt-windows-x86_64
+          path: dist/windows
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          linux_asset="dist/linux/beehive-revolt-linux-x86_64.tar.gz"
+          windows_asset="dist/windows/beehive-revolt-windows-x86_64.zip"
+
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" "$linux_asset" "$windows_asset" --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" \
+              "$linux_asset#Beehive Revolt Linux x86_64" \
+              "$windows_asset#Beehive Revolt Windows x86_64" \
+              --generate-notes \
+              --title "Beehive Revolt $GITHUB_REF_NAME"
+          fi
