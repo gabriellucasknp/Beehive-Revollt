@@ -94,7 +94,7 @@ jobs:
 
       - name: Build Windows binary
         shell: msys2 {0}
-        run: make clean && make OS=Windows_NT TARGET_EXT=.exe RAYLIB_PREFIX=/mingw64
+        run: mingw32-make clean && mingw32-make OS=Windows_NT TARGET_EXT=.exe RAYLIB_PREFIX=/mingw64
 
       - name: Package Windows release
         shell: pwsh
