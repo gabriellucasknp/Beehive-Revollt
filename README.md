@@ -44,14 +44,14 @@ make test
 
 ## Team
 
-| Name | Role |
-|------|------|
-| Arthur Leite da Cruz Pessoa | |
-| Eduardo Augusto Pereira Rodrigues | |
-| Francisco Oliveira Junior | |
-| Gabriel Lucas Soares da Silva | |
-| Gilberto Dias Da Silva Neto | |
-| Giuliano Marques Minelli | |
+| Name |
+|------ |
+| Arthur Leite da Cruz Pessoa |
+| Eduardo Augusto Pereira Rodrigues |
+| Francisco Oliveira Junior |
+| Gabriel Lucas Soares da Silva |
+| Gilberto Dias Da Silva Neto |
+| Giuliano Marques Minelli |
 
 ## License
 
