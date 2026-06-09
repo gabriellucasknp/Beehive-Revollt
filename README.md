@@ -1,6 +1,6 @@
 # BEEHIVE REVOLT
 
-A 2D action game built with [raylib](https://www.raylib.com/), written in C99.
+A 2D action game built with [raylib](https://www.raylib.com/), written in C.
 
 Take control of a bee in a hexagonal hive and fight against invading wasps, drones, and the queen to reclaim your home.
 
