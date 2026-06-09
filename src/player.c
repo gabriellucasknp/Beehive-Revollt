@@ -107,6 +107,24 @@ void player_update(Player *p, float dt) {
     player_update_effects(p, dt);
 }
 
+void player_update_free(Player *p, float dt) {
+    float spd = player_speed(p);
+
+    if (IsKeyDown(KEY_A) || IsKeyDown(KEY_LEFT))  p->x -= spd * dt;
+    if (IsKeyDown(KEY_D) || IsKeyDown(KEY_RIGHT)) p->x += spd * dt;
+    if (IsKeyDown(KEY_W) || IsKeyDown(KEY_UP))    p->y -= spd * dt;
+    if (IsKeyDown(KEY_S) || IsKeyDown(KEY_DOWN))  p->y += spd * dt;
+
+    float half = (SPR_SIZE_16 * SPRITE_SCALE) / 2.0f;
+    if (p->x < half)            p->x = half;
+    if (p->x > SCREEN_W - half) p->x = SCREEN_W - half;
+    if (p->y < half)            p->y = half;
+    if (p->y > SCREEN_H - half) p->y = SCREEN_H - half;
+
+    p->thrust_anim += dt;
+    player_update_effects(p, dt);
+}
+
 void player_draw(const Player *p, const Assets *a) {
     if (p->temp_boost == TEMP_BOOST_SHIELD) draw_temp_shield(p);
     draw_shield_break(p);

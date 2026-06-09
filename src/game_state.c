@@ -505,7 +505,7 @@ static void frame_archive_playing(Game *g, float dt) {
         g->bg_scroll += 18.0f * dt;
         if (g->status_timer > 0.0f) g->status_timer -= dt;
 
-        player_update(&g->player, dt);
+        player_update_free(&g->player, dt);
         archive_update_honey(g, dt);
         archive_check_paper_collect(g);
 

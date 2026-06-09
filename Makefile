@@ -49,6 +49,8 @@ LDLIBS += $(PROJECT_LIBS)
 
 TEST_BIN := $(BUILD_DIR)/player_temp_boost_test
 CAMPAIGN_TEST_BIN := $(BUILD_DIR)/campaign_test
+TEST_CPPFLAGS ?= -Itests -Isrc
+TEST_LDLIBS ?= $(PROJECT_LIBS)
 
 all: $(TARGET)
 
@@ -71,10 +73,10 @@ test: $(TEST_BIN) $(CAMPAIGN_TEST_BIN)
 	./$(TEST_BIN)
 	./$(CAMPAIGN_TEST_BIN)
 
-$(TEST_BIN): tests/player_temp_boost_test.c src/player.c src/player.h src/assets.h src/types.h | $(BUILD_DIR)
-	$(CC) $(CPPFLAGS) $(CFLAGS) -Isrc tests/player_temp_boost_test.c src/player.c -o $@ $(LDFLAGS) $(LDLIBS)
+$(TEST_BIN): tests/player_temp_boost_test.c tests/raylib.h src/player.c src/player.h src/assets.h src/types.h | $(BUILD_DIR)
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(TEST_CPPFLAGS) tests/player_temp_boost_test.c src/player.c -o $@ $(LDFLAGS) $(TEST_LDLIBS)
 
-$(CAMPAIGN_TEST_BIN): tests/campaign_test.c src/campaign.c src/campaign.h src/stage.h src/types.h | $(BUILD_DIR)
-	$(CC) $(CPPFLAGS) $(CFLAGS) -Isrc tests/campaign_test.c src/campaign.c -o $@ $(LDFLAGS) $(LDLIBS)
+$(CAMPAIGN_TEST_BIN): tests/campaign_test.c tests/raylib.h src/campaign.c src/campaign.h src/stage.h src/types.h | $(BUILD_DIR)
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(TEST_CPPFLAGS) tests/campaign_test.c src/campaign.c -o $@ $(LDFLAGS) $(TEST_LDLIBS)
 
 -include $(DEPS)

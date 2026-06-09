@@ -19,6 +19,7 @@ typedef struct {
 
 void player_init(Player *p);
 void player_update(Player *p, float dt);
+void player_update_free(Player *p, float dt);
 void player_update_effects(Player *p, float dt);
 void player_draw(const Player *p, const Assets *a);
 void player_take_damage(Player *p);
